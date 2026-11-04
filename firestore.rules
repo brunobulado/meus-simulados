@@ -1,0 +1,20 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Backup do banco: cada usuário só lê/escreve o PRÓPRIO backup,
+    // e somente com o e-mail verificado. Só são aceitos os documentos
+    // "meta" e "parte_0" até "parte_19" (precisa bater com MAX_PARTES do nuvem.js).
+    match /usuarios/{uid}/backup/{docId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == uid
+                         && request.auth.token.email_verified == true
+                         && (docId == 'meta' || docId.matches('parte_([0-9]|1[0-9])'));
+    }
+
+    // Todo o resto fica fechado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

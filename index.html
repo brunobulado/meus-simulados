@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Meus Simulados | Plataforma de Estudos</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.4.0/dist/sql-wasm.js"></script>
+</head>
+<body>
+
+<div id="dbLoading" style="display:flex; align-items:center; justify-content:center; height:100vh; gap:12px; font-size:1.1rem; color:#9aa0ac;">
+    <span class="spinner" style="width:20px;height:20px;"></span>
+    Carregando banco de dados local (SQLite)...
+</div>
+
+<div id="authScreen" class="auth-wrap hidden">
+    <div class="auth-card">
+        <div class="auth-brand">Meus Simulados</div>
+        <p class="small" style="color:var(--text-light); margin:4px 0 18px;">Entre ou crie sua conta para acessar seus simulados.</p>
+        <div class="auth-tabs" id="authTabs">
+            <div class="auth-tab active" id="authTabEntrar" onclick="authAba('entrar')">Entrar</div>
+            <div class="auth-tab" id="authTabCadastrar" onclick="authAba('cadastrar')">Criar conta</div>
+        </div>
+        <form id="authForm" onsubmit="authEnviar(event)">
+            <div id="authCampoNome" class="hidden">
+                <label class="small" for="authNome">Nome</label>
+                <input type="text" id="authNome" autocomplete="name" placeholder="Como você quer ser chamado">
+            </div>
+            <label class="small" for="authEmail">E-mail</label>
+            <input type="email" id="authEmail" autocomplete="email" placeholder="voce@exemplo.com" required>
+            <label class="small" for="authSenha">Senha</label>
+            <input type="password" id="authSenha" autocomplete="current-password" placeholder="mínimo de 6 caracteres" required>
+            <div id="authCampoConfirma" class="hidden">
+                <label class="small" for="authSenha2">Confirmar senha</label>
+                <input type="password" id="authSenha2" autocomplete="new-password" placeholder="repita a senha">
+            </div>
+            <button type="submit" class="btn btn-primary" id="authBtn" style="width:100%;">Entrar</button>
+        </form>
+        <div class="auth-sep" id="authSep"><span>ou</span></div>
+        <button type="button" class="btn btn-outline" id="authGoogleBtn" onclick="authGoogle()" style="width:100%;">
+            <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.5 5.4 2.6 13.2l7.9 6.1C12.4 13.5 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.9-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.6 10.8l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.1 1.4-4.9 2.3-8.4 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.1C6.5 42.6 14.6 48 24 48z"/></svg>
+            Continuar com Google
+        </button>
+        <a id="authEsqueci" class="auth-link" onclick="authEsqueci()">Esqueci minha senha</a>
+        <div id="authMsg" class="small" style="margin-top:14px; min-height:20px; line-height:1.4;"></div>
+    </div>
+</div>
+
+<div id="verifyScreen" class="auth-wrap hidden">
+    <div class="auth-card" style="text-align:center;">
+        <div style="font-size:2.4rem;">📧</div>
+        <div class="auth-brand" style="margin-bottom:8px;">Confirme seu e-mail</div>
+        <p class="small" style="color:var(--text-light); line-height:1.6;">
+            Enviamos um link de verificação para<br><b id="verifyEmail" style="color:var(--text-main); word-break:break-all;"></b><br>
+            Abra o e-mail, clique no link e volte aqui. O acesso ao app só é liberado depois dessa confirmação.
+        </p>
+        <button class="btn btn-primary" style="width:100%; margin-top:14px;" onclick="Auth.verificarAgora(false)">✅ Já verifiquei</button>
+        <button class="btn btn-outline" id="verifyReenviar" style="width:100%; margin-top:10px;" onclick="Auth.reenviarVerificacao()">Reenviar e-mail</button>
+        <a class="auth-link" onclick="Auth.sair()">Sair / usar outra conta</a>
+        <div id="verifyMsg" class="small" style="margin-top:14px; min-height:20px; line-height:1.4;"></div>
+    </div>
+</div>
+
+<div id="appRoot" class="hidden" style="display:flex; width:100%; height:100vh;">
+
+
+<div class="sidebar">
+    <div class="brand">Meus Simulados<span style="display:block; font-size:.6rem; font-weight:400; color:var(--text-light); -webkit-text-fill-color:var(--text-light); margin-top:2px;">v2.4 — nuvem, e-mail verificado e chave de IA obrigatória</span></div>
+    <div class="nav-item active" onclick="switchView('gerar')">✨ Gerar Simulado</div>
+    <div class="nav-item" onclick="switchView('redacao')">📝 Redação ENEM</div>
+    <div class="nav-item" onclick="switchView('dashboard')">📊 Dashboard & Arquivos</div>
+    <div class="nav-item" onclick="switchView('config')">⚙️ Configurar API</div>
+
+    <div id="userChip" class="user-chip hidden">
+        <div id="userEmail" class="small" style="word-break:break-all;"></div>
+        <div id="userVerif" class="small hidden" style="color:var(--warning); margin-top:6px;">
+            ⚠️ E-mail não verificado. <a class="auth-link" style="display:inline; margin:0;" onclick="Auth.reenviarVerificacao()">Reenviar</a>
+        </div>
+        <button id="userTrocarSenha" class="btn btn-outline btn-small hidden" style="width:100%; margin-top:10px;" onclick="Auth.trocarSenha()">🔑 Trocar senha</button>
+        <button id="userSair" class="btn btn-outline btn-small hidden" style="width:100%; margin-top:10px;" onclick="Auth.sair()">Sair da conta</button>
+    </div>
+</div>
+
+<div class="main">
+    
+    <button class="btn-toggle-menu" onclick="toggleMenu()" title="Recolher / Expandir Menu">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        Recolher/Expandir Menu
+    </button>
+
+    <!-- Redação ENEM -->
+    <div id="view-redacao" class="hidden">
+        <div class="hero">
+            <h1>Redação ENEM</h1>
+            <p>Gere um tema no padrão INEP, escreva seu texto dissertativo-argumentativo e receba uma correção por competência (C1 a C5, nota de 0 a 1000) feita por IA.</p>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">1. Tema e proposta</h2>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;">
+                <button class="btn btn-primary" id="btnGerarTema" onclick="gerarTemaRedacao()">✨ Gerar tema com IA</button>
+                <input type="text" id="redTemaLivre" placeholder="ou digite o seu próprio tema" style="flex:1; min-width:220px; margin:0;" oninput="usarTemaLivre()">
+            </div>
+            <div id="redStatusTema" class="small" style="color:var(--text-light); min-height:18px;"></div>
+            <div id="redTemaBox"></div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">2. Sua redação</h2>
+            <textarea id="redTexto" rows="18" placeholder="Escreva aqui. O ENEM pede texto dissertativo-argumentativo em prosa, com 8 a 30 linhas, título opcional e proposta de intervenção com agente, ação, meio/modo, finalidade e detalhamento." oninput="atualizarContadorRedacao()" style="width:100%; padding:14px; border:1px solid var(--border); border-radius:8px; background:var(--bg-body); color:var(--text-main); font-family:inherit; font-size:1rem; line-height:1.6; resize:vertical;"></textarea>
+            <div id="redContador" class="small" style="color:var(--text-light); margin:8px 0 14px;">0 palavras</div>
+            <button class="btn btn-primary" id="btnCorrigirRed" onclick="corrigirRedacao()">🧠 Corrigir com IA</button>
+            <div id="redStatus" class="small" style="color:var(--text-light); margin-top:10px; min-height:18px;"></div>
+        </div>
+
+        <div id="redResultado"></div>
+
+        <div class="card">
+            <div class="caderno-header" onclick="toggleBloco('hist-redacoes')">
+                <h2 class="card-title" style="margin:0;">Histórico de redações</h2>
+                <span class="caderno-chevron open" id="chev-hist-redacoes">▶</span>
+            </div>
+            <div class="caderno-body" id="body-hist-redacoes"><div id="redHistorico"></div></div>
+        </div>
+    </div>
+
+    <!-- Config -->
+    <div id="view-config" class="hidden">
+        <div class="resume-banner hidden" id="gateChaveIA" style="border-color:var(--warning);">
+            <div>🔒 <b>Configure ao menos um provedor de IA para continuar.</b> Escolha o provedor, cole a chave, clique em "Buscar Modelos", selecione um modelo e salve. Enquanto isso, as demais telas ficam bloqueadas.</div>
+        </div>
+        <div class="card">
+            <h2 class="card-title">Configurações de Inteligência Artificial</h2>
+            <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 16px;">Alterne entre provedores dependendo da sua cota. Dados salvos apenas no navegador.</p>
+            
+            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Provedor de IA</label>
+            <select id="apiProvider" onchange="changeProvider()">
+                <option value="gemini">Google Gemini (Sua chave atual)</option>
+                <option value="groq">Groq (Llama 3 ultra-rápido)</option>
+                <option value="openrouter">OpenRouter (Modelos Gratuitos)</option>
+                <option value="openai">OpenAI (ChatGPT Pago)</option>
+                <option value="mistral">Mistral</option>
+                <option value="deepseek">DeepSeek</option>
+                <option value="cohere">Cohere</option>
+            </select>
+
+            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px; margin-top: 16px;">Chave da API</label>
+            <div style="display: flex; gap: 12px;">
+                <input type="password" id="apiKey" placeholder="Insira sua chave correspondente ao provedor..." style="margin-bottom: 0;">
+                <button class="btn btn-outline" onclick="buscarModelos()" style="white-space: nowrap;">🔍 Buscar Modelos</button>
+            </div>
+            
+            <label style="display: block; font-size: 0.9rem; margin-bottom: 8px; margin-top: 16px;">Modelo (Atualiza ao clicar em Buscar Modelos)</label>
+            <select id="apiModel">
+                <option value="">Insira a chave e clique em Buscar Modelos...</option>
+            </select>
+
+            <button class="btn btn-primary" style="margin-top: 24px; width: 100%;" onclick="saveConfig()">Salvar Configurações</button>
+
+            <div style="margin-top:20px; padding-top:16px; border-top:1px solid var(--border);">
+                <h3 style="font-size:1rem; margin:0 0 6px;">Modelos deste provedor (rodízio automático)</h3>
+                <p class="small" style="color:var(--text-light); margin-bottom:10px;">O modelo salvo acima é o principal. Selecione outro modelo na lista e adicione como reserva: se o principal esgotar a cota ou falhar, o sistema tenta o próximo modelo <b>do mesmo provedor</b> antes de passar para outro provedor.</p>
+                <button class="btn btn-outline btn-small" onclick="adicionarModeloReserva()">＋ Adicionar modelo selecionado como reserva</button>
+                <div id="listaModelosReserva" style="margin-top:10px;"></div>
+            </div>
+            <div id="configMsg" style="margin-top: 12px; color: var(--success); font-size: 0.9rem; text-align: center; min-height: 20px;"></div>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h2 class="card-title">🔀 Seleção Automática de Provedor (Load Balancing)</h2>
+            <p style="color: var(--text-light); font-size: 0.9rem; margin-bottom: 16px;">
+                Configure quantos provedores quiser acima (um de cada vez, salvando cada um). Com isso ativo, se o provedor da vez falhar ou bater em limite de requisições,
+                o sistema tenta automaticamente o próximo desta lista — sem abortar a geração.
+            </p>
+            <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer;">
+                <input type="checkbox" id="fallbackAtivo" onchange="salvarConfigFallback()" style="width:auto; margin:0;">
+                Ativar seleção automática (fallback entre provedores)
+            </label>
+            <label style="display:flex; align-items:center; gap:8px; margin-bottom:16px; cursor:pointer;">
+                <input type="checkbox" id="fallbackAutoRank" onchange="salvarConfigFallback()" style="width:auto; margin:0;">
+                Reordenar automaticamente pelo histórico de confiabilidade (mais taxa de sucesso primeiro)
+            </label>
+            <div id="listaProvedoresFallback"></div>
+            <button class="btn btn-outline btn-small" style="margin-top:12px;" onclick="resetarStatsProvedores()">🔄 Redefinir estatísticas de confiabilidade</button>
+        </div>
+
+        <div class="card" style="margin-top:20px;">
+            <h2 class="card-title">📒 Log de modelos de IA</h2>
+            <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px; cursor:pointer;">
+                <input type="checkbox" id="fallbackUsarLog" onchange="salvarConfigFallback()" style="width:auto; margin:0;">
+                Trocar de modelo automaticamente usando o log (pula por 10 min o modelo que esgotou a cota)
+            </label>
+            <div id="logModelosResumo" class="small" style="color:var(--text-light); margin-bottom:10px;"></div>
+            <div style="overflow-x:auto;" id="logModelosTabela"></div>
+            <button class="btn btn-outline btn-small" style="margin-top:12px;" onclick="limparLogModelos()">🧹 Limpar log de modelos</button>
+        </div>
+    </div>
+
+    <!-- Dashboard & Arquivos -->
+    <div id="view-dashboard" class="hidden">
+        <div class="grid-2">
+            <div class="card">
+                <h2 class="card-title">Questões Salvas</h2>
+                <div style="font-size: 2.5rem; font-weight: 700;" id="dashTotalQ">0</div>
+                <div style="color: var(--text-light); font-size: 0.9rem;">disponíveis offline</div>
+            </div>
+            <div class="card">
+                <h2 class="card-title">Aproveitamento Global</h2>
+                <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary);" id="dashAcertos">0%</div>
+                <div style="color: var(--text-light); font-size: 0.9rem;">taxa de acerto</div>
+            </div>
+        </div>
+
+        <div id="dashCadernos"></div>
+
+        <div class="card" style="margin-top: 20px;">
+            <div class="caderno-header" onclick="toggleBloco('historico-geral')">
+                <h2 class="card-title" style="margin:0;">Histórico de Simulados</h2>
+                <span class="caderno-chevron open" id="chev-historico-geral">▶</span>
+            </div>
+            <div class="caderno-body" id="body-historico-geral">
+                <div id="dashHistorico"><p class="small" style="color: var(--text-light);">Nenhum simulado registrado ainda.</p></div>
+            </div>
+        </div>
+
+        <div class="card hidden" id="cardNuvem" style="margin-top: 20px;">
+            <h2 class="card-title">☁️ Backup na nuvem (Firestore)</h2>
+            <p class="small" style="color:var(--text-light); margin-bottom:12px;">Guarda uma cópia do seu banco (questões, respostas, simulados e redações) na sua conta, para recuperar em outro computador ou se limpar o navegador. <b>Suas chaves de IA não sobem</b>: continuam só neste navegador.</p>
+            <div id="nuvemStatus" class="small" style="color:var(--text-light); margin-bottom:12px;">Consultando...</div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary btn-small" id="nuvemSalvar" onclick="nuvemSalvar()">☁️ Salvar backup agora</button>
+                <button class="btn btn-outline btn-small" id="nuvemRestaurar" onclick="nuvemRestaurar()">⬇️ Restaurar da nuvem</button>
+            </div>
+            <label style="display:flex; align-items:center; gap:8px; margin-top:14px; cursor:pointer; font-size:.88rem;">
+                <input type="checkbox" id="nuvemAuto" onchange="nuvemAlternarAuto()" style="width:auto; margin:0;">
+                Backup automático depois de cada simulado ou redação corrigida
+            </label>
+            <div id="nuvemMsg" class="small" style="margin-top:10px; min-height:18px;"></div>
+        </div>
+
+        <div class="card" style="margin-top: 20px;">
+            <h2 class="card-title">Backup do Banco Local (arquivo .sqlite real)</h2>
+            <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                <button class="btn btn-primary" onclick="exportarBanco()">📥 Exportar Banco (.sqlite)</button>
+                <div style="border-left: 1px solid var(--border); padding-left: 16px;">
+                    <label style="display: block; margin-bottom: 8px; font-size: 0.9rem;">Importar Banco (.sqlite):</label>
+                    <input type="file" id="fileImport" accept=".sqlite,.db" onchange="importarBanco(event)">
+                    <label style="display: block; margin: 14px 0 8px; font-size: 0.9rem;">Importar backup antigo (.json, de antes da refatoração):</label>
+                    <input type="file" id="fileImportJson" accept=".json" onchange="importarJsonLegado(event)">
+                </div>
+            </div>
+            <div style="margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px;">
+                <button class="btn btn-outline" style="color: var(--danger); border-color: var(--danger);" onclick="limparBanco()">Apagar Banco Local</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gerar Simulado -->
+    <div id="view-gerar">
+        <div class="resume-banner hidden" id="resumeBanner">
+            <div>🔄 Você tem um simulado em andamento (<span id="resumeInfo"></span>). Deseja continuar de onde parou?</div>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-primary btn-small" onclick="retomarSessao()">Retomar</button>
+                <button class="btn btn-outline btn-small" onclick="descartarSessao()">Descartar</button>
+            </div>
+        </div>
+        <div class="hero">
+            <h1>Simulados com IA</h1>
+            <p>Gere questões inéditas focadas no seu edital. Totalmente offline e customizável.</p>
+        </div>
+
+        <div class="tabs" id="examTabs"></div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin:-12px 0 20px;">
+            <button class="btn btn-outline btn-small" onclick="abrirFormConcurso()">＋ Novo concurso / banca / cargo</button>
+            <button class="btn btn-outline btn-small hidden" id="btnExcluirConcurso" onclick="excluirConcursoAtual()" style="color:var(--danger); border-color:var(--danger);">🗑 Excluir este concurso</button>
+        </div>
+
+        <div class="card hidden" id="formConcurso">
+            <h2 class="card-title">＋ Novo concurso</h2>
+            <p class="small" style="color:var(--text-light); margin-bottom:14px;">Crie um perfil para qualquer carreira, cargo, banca ou concurso. Ele aparece como uma aba nova e ganha o próprio caderno de desempenho.</p>
+            <div class="grid-2">
+                <div><label class="small">Concurso / cargo (ex.: PM-SP Soldado)</label><input type="text" id="ncNome" placeholder="Nome do concurso"></div>
+                <div><label class="small">Banca (ex.: Vunesp, FCC, IBFC)</label><input type="text" id="ncBanca" placeholder="Banca organizadora"></div>
+            </div>
+            <div class="grid-2">
+                <div><label class="small">Formato das questões</label>
+                    <select id="ncTipo">
+                        <option value="multipla">Múltipla escolha</option>
+                        <option value="certo_errado">Certo / Errado (estilo Cebraspe)</option>
+                    </select></div>
+                <div><label class="small">Nº de alternativas (múltipla escolha)</label>
+                    <select id="ncAlt"><option value="5">5 (A–E)</option><option value="4">4 (A–D)</option></select></div>
+            </div>
+            <label class="small">Disciplinas (separadas por vírgula)</label>
+            <textarea id="ncDisc" rows="3" placeholder="Língua Portuguesa, Matemática, Direito Constitucional, ..." style="width:100%; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--bg-body); color:var(--text-main); margin-bottom:16px; font-family:inherit;"></textarea>
+            <label class="small">Estilo da banca (opcional — se vazio, a IA usa um padrão genérico)</label>
+            <textarea id="ncEstilo" rows="3" placeholder="Ex.: enunciados curtos, foco em lei seca, pegadinhas de exceção legal..." style="width:100%; padding:12px; border:1px solid var(--border); border-radius:8px; background:var(--bg-body); color:var(--text-main); margin-bottom:16px; font-family:inherit;"></textarea>
+            <div style="display:flex; gap:8px;">
+                <button class="btn btn-primary" onclick="salvarConcursoCustom()">Salvar concurso</button>
+                <button class="btn btn-outline" onclick="fecharFormConcurso()">Cancelar</button>
+            </div>
+            <div id="ncMsg" class="small" style="color:var(--danger); margin-top:10px; min-height:18px;"></div>
+        </div>
+
+        <div class="card hidden" id="enemPanel">
+            <h2 class="card-title">🎓 Módulo ENEM</h2>
+            <p class="small" style="color:var(--text-light); margin-bottom:14px;">Atalhos que montam o simulado no formato oficial: 5 alternativas, 45 questões por área (90 por dia), com a distribuição de disciplinas e o tempo de prova já ajustados. Não há imagens: gráficos, tabelas e figuras são descritos em texto.</p>
+            <div style="display:flex; gap:10px; align-items:center; margin-bottom:12px; flex-wrap:wrap;">
+                <label class="small" style="margin:0;">Língua estrangeira (Linguagens):</label>
+                <select id="enemLingua" style="width:auto; margin:0;"><option value="Inglês">Inglês</option><option value="Espanhol">Espanhol</option></select>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button class="btn btn-primary btn-small" onclick="aplicarPresetEnem('dia1')">📅 Dia 1 completo (90 q · 5h30)</button>
+                <button class="btn btn-primary btn-small" onclick="aplicarPresetEnem('dia2')">📅 Dia 2 completo (90 q · 5h)</button>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+                <button class="btn btn-outline btn-small" onclick="aplicarPresetEnem('linguagens')">Linguagens (45)</button>
+                <button class="btn btn-outline btn-small" onclick="aplicarPresetEnem('humanas')">Humanas (45)</button>
+                <button class="btn btn-outline btn-small" onclick="aplicarPresetEnem('natureza')">Natureza (45)</button>
+                <button class="btn btn-outline btn-small" onclick="aplicarPresetEnem('matematica')">Matemática (45)</button>
+                <button class="btn btn-outline btn-small" onclick="switchViewPorId('redacao')">📝 Ir para a Redação</button>
+            </div>
+            <div id="enemPresetMsg" class="small" style="color:var(--success); margin-top:10px; min-height:18px;"></div>
+        </div>
+
+        <div class="card">
+            <h2 class="card-title">Disciplinas do Edital</h2>
+            <div class="chips-grid" id="discGrid"></div>
+            
+            <div class="grid-3" style="margin-top: 24px;">
+                <div>
+                    <label style="display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-light);">Quantidade (1 a 200)</label>
+                    <input type="number" id="qCount" min="1" max="200" value="20" placeholder="1 a 200" oninput="limparPlanoEnem()">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-light);">Dificuldade</label>
+                    <select id="qDiff">
+                        <option value="facil">Fácil (conceitos básicos)</option>
+                        <option value="moderada">Moderada</option>
+                        <option value="dificil" selected>Difícil (estilo banca)</option>
+                        <option value="mista">Mista (fácil + moderada + difícil)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-light);">Tempo (Minutos)</label>
+                    <input type="number" id="tempoSimulado" placeholder="0 = Sem limite" value="60" min="0">
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.9rem; margin-bottom: 8px; color: var(--text-light);">Mostrar gabarito</label>
+                    <select id="modoGabarito">
+                        <option value="final" selected>Só ao final (corrigir tudo)</option>
+                        <option value="imediato">Imediatamente após responder</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="pdfSectionWrapper" style="margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--border);">
+                <h3 style="font-size: 1.05rem; margin-top: 0; color: var(--accent);">📚 Personalizar com Base em PDF (Opcional)</h3>
+                <p style="font-size: 0.85rem; color: var(--text-light); margin-bottom: 12px;">Selecione o edital ou uma prova. A IA usará o conteúdo do PDF como contexto.</p>
+                
+                <div id="pdfFields" class="grid-2">
+                    <div>
+                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Anexar Arquivo (.pdf)</label>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <input type="file" id="pdfUpload" accept="application/pdf" style="margin-bottom: 0;">
+                            <button class="btn btn-outline" style="padding: 8px 12px; margin-bottom: 0;" onclick="limparPDF()" title="Remover Arquivo Selecionado">❌</button>
+                        </div>
+                    </div>
+                    <div>
+                        <label style="display: block; font-size: 0.9rem; margin-bottom: 8px;">Como a IA deve usar o arquivo?</label>
+                        <select id="pdfMode" onchange="atualizarAvisoPdfMode()">
+                            <option value="edital">Usar como EDITAL (Criar questões do conteúdo abordado)</option>
+                            <option value="prova">Usar como PROVA REFERÊNCIA (Seguir o mesmo estilo de questões)</option>
+                            <option value="transcricao">TRANSCREVER questões exatamente como estão no PDF (não criar novas)</option>
+                        </select>
+                        <p class="small" id="pdfModeAviso" style="color: var(--text-light); margin-top:6px;"></p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap;">
+                <button class="btn btn-primary" id="btnGenAI" onclick="iniciarSimulado(true)">✨ Gerar Inéditas (Usa API)</button>
+                <button class="btn btn-outline" onclick="iniciarSimulado(false)">Usar Banco Local (Sem API)</button>
+            </div>
+            <div id="loader" class="hidden">Conectando à IA... Processando conteúdo...</div>
+        </div>
+    </div>
+
+    <!-- Área de Prova -->
+    <div id="view-quiz" class="hidden">
+        <h1 class="static-title" id="quizTitle">Simulado em Andamento</h1>
+        
+        <div class="sticky-toolbar hidden" id="stickyToolbar">
+            <button class="btn btn-outline btn-small" onclick="irParaHome()" title="Pausa o cronômetro e volta para a Home">🏠 Home</button>
+            <div id="timerContainer" class="timer-controls" style="display:none;">
+                <div id="timerDisplay" style="font-size: 1.3rem; font-weight: bold; color: var(--danger); font-variant-numeric: tabular-nums;">⏱ 00:00:00</div>
+                <button class="btn btn-outline btn-small" id="btnPauseTimer" onclick="pausarCronometro()">⏸ Pausar</button>
+                <button class="btn btn-outline btn-small" onclick="reiniciarCronometro()">🔄 Reiniciar</button>
+            </div>
+
+            <div id="progressContainer" class="progress-controls hidden">
+                <span class="spinner"></span>
+                <span id="progressLabel">Gerando mais questões em segundo plano...</span>
+                <button class="btn btn-outline btn-small" style="color: var(--danger); border-color: var(--danger);" onclick="encerrarSimuladoAgora()">🛑 Encerrar Simulado</button>
+            </div>
+            
+            <div style="flex: 1;"></div> 
+            
+            <span id="answeredCounter" class="answered-counter"></span>
+            <button class="btn btn-primary" id="btnFinalizar" onclick="finalizarSimulado()">Corrigir Simulado</button>
+        </div>
+
+        <div class="card hidden" id="startCard">
+            <h2 class="card-title">✅ Simulado pronto para começar</h2>
+            <p class="small" id="startInfo" style="color: var(--text-light);">Carregando questões...</p>
+            <p class="small" style="color: var(--text-light);">O cronômetro só começa a contar quando você clicar em iniciar.</p>
+            <button class="btn btn-primary" id="btnIniciarProva" onclick="startProva()">🚀 Iniciar Simulado</button>
+        </div>
+        
+        <div id="quizContainer" class="hidden"></div>
+    </div>
+
+</div>
+
+
+
+
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="auth.js"></script>
+<script src="db.js"></script>
+<script src="nuvem.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

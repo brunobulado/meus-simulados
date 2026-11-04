@@ -1,0 +1,19 @@
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Dependências / ferramentas
+node_modules/
+.netlify/
+.firebase/
+
+# Dados pessoais: backups do banco e exportações NÃO devem ir para o GitHub
+*.sqlite
+*.sqlite3
+*.db
+backup_*.json
+
+# Segredos (este projeto não usa .env, mas por garantia)
+.env
+.env.*

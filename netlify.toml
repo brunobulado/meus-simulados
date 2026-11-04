@@ -1,0 +1,12 @@
+# Site estático: não há build. O Netlify só publica os arquivos desta pasta.
+[build]
+  publish = "."
+
+# Cabeçalhos de segurança básicos (sem CSP, para não bloquear Firebase, sql.js e as APIs de IA)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
